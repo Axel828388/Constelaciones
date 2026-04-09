@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bajo las Estrellas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Outfit:wght@300;400&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        deepNight: '#0F0F1A',
+                        nebulaPurple: '#2A0A4A',
+                        stellarLavender: '#B19CD9',
+                        glowViolet: '#4E1A6F',
+                        softSilk: '#D0BBEA',
+                    },
+                    fontFamily: {
+                        display: ['Cinzel', 'serif'],
+                        body: ['Outfit', 'sans-serif'],
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                        'star-twinkle': 'twinkle 3s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-20px)' },
+                        },
+                        twinkle: {
+                            '0%, 100%': { opacity: 0.3, transform: 'scale(0.8)' },
+                            '50%': { opacity: 1, transform: 'scale(1.2)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0F0F1A;
+            margin: 0;
+            overflow: hidden;
+            color: #D0BBEA;
+            user-select: none;
+        }
+
+        .phase {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 1.5s ease-in-out, transform 1.5s ease-in-out;
+            z-index: 10;
+        }
+
+        .phase.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        #star-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            background: radial-gradient(circle at center, #2A0A4A 0%, #0F0F1A 100%);
+        }
+
+        .glass-panel {
+            background: rgba(42, 10, 74, 0.2);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(177, 156, 217, 0.2);
+            border-radius: 2rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .interactive-star {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.5s ease;
+        }
+
+        .interactive-star::after {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: #D0BBEA;
+            border-radius: 50%;
+            box-shadow: 0 0 15px 2px #B19CD9;
+            transition: all 0.5s ease;
+        }
+
+        .interactive-star.found::after {
+            background: #fff;
+            box-shadow: 0 0 25px 5px #B19CD9, 0 0 40px 10px rgba(177, 156, 217, 0.5);
+            transform: scale(1.5);
+        }
+
+        .interactive-star:hover::after {
+            transform: scale(1.8);
+            box-shadow: 0 0 30px 8px #B19CD9;
+        }
+
+        .star-particle {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .btn-elegant {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s ease;
+            border: 1px solid rgba(208, 187, 234, 0.4);
+            background: rgba(78, 26, 111, 0.3);
+            backdrop-filter: blur(5px);
+        }
+
+        .btn-elegant:hover {
+            background: rgba(177, 156, 217, 0.4);
+            box-shadow: 0 0 20px rgba(177, 156, 217, 0.6);
+            transform: translateY(-2px);
+        }
+
+        .revealed-text-box {
+            min-height: 120px;
+            width: 90%;
+            max-width: 600px;
+        }
+
+        .word-span {
+            display: inline-block;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            margin: 0 0.25rem;
+        }
+
+        .word-span.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        @keyframes subtle-glow {
+            0%, 100% { text-shadow: 0 0 10px rgba(208, 187, 234, 0.3); }
+            50% { text-shadow: 0 0 25px rgba(208, 187, 234, 0.8); }
+        }
+
+        .glow-text {
+            animation: subtle-glow 4s infinite ease-in-out;
+        }
+
+        .spotify-embed-wrap {
+            width: 90vw;
+            max-width: 640px;
+        }
+
+        .spotify-embed {
+            width: 100%;
+            height: 380px;
+            border: 0;
+            border-radius: 1.25rem;
+        }
+
+        @media (min-width: 768px) {
+            .spotify-embed {
+                height: 420px;
+            }
+        }
+
+        .embed-gate {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 1.25rem;
+            border-radius: 1.25rem;
+            background: rgba(15, 15, 26, 0.35);
+            border: 1px solid rgba(208, 187, 234, 0.25);
+            backdrop-filter: blur(6px);
+            cursor: pointer;
+            transition: opacity 0.5s ease;
+        }
+
+        .embed-gate.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .playlist-cover {
+            width: 100%;
+            max-width: 420px;
+            aspect-ratio: 1 / 1;
+            object-fit: cover;
+            border-radius: 1rem;
+            border: 1px solid rgba(208, 187, 234, 0.25);
+        }
+    </style>
+</head>
+<body class="font-body">
+
+    <canvas id="star-canvas"></canvas>
+
+    <!-- PHASE 1: INTRODUCTION -->
+    <section id="phase-intro" class="phase active px-6 text-center">
+        <h1 class="font-display text-4xl md:text-7xl mb-12 tracking-widest text-softSilk glow-text">
+            Hay secretos guardados<br>en el firmamento.
+        </h1>
+        <button onclick="transitionToPhase(2)" class="btn-elegant font-display text-lg px-12 py-4 rounded-full text-white tracking-widest uppercase">
+            Descubrir Mensaje
+        </button>
+    </section>
+
+    <!-- PHASE 2: CONSTELLATION -->
+    <section id="phase-constellation" class="phase px-6">
+        <div id="stars-container" class="absolute inset-0 w-full h-full">
+            <!-- Stars generated by JS -->
+        </div>
+
+        <div class="z-20 w-full flex flex-col items-center justify-end pb-20 md:pb-32 h-full pointer-events-none">
+            <div class="revealed-text-box glass-panel p-8 text-center flex flex-wrap justify-center items-center pointer-events-auto">
+                <p id="message-display" class="text-xl md:text-3xl font-display leading-relaxed text-softSilk">
+                    <!-- Clues appear here -->
+                </p>
+            </div>
+            
+            <div class="mt-8 pointer-events-auto">
+                <div class="flex flex-col items-center gap-2">
+                    <span id="progress-text" class="text-xs uppercase tracking-[0.3em] text-stellarLavender opacity-80">0 / 8 estrellas encontradas</span>
+                    <div class="w-48 h-1 bg-white/10 rounded-full overflow-hidden">
+                        <div id="progress-bar" class="h-full bg-stellarLavender w-0 transition-all duration-700 shadow-[0_0_10px_#B19CD9]"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PHASE 3: PLAYLIST REWARD + REVEAL -->
+    <section id="phase-final" class="phase px-6 text-center">
+        <div class="glass-panel p-8 md:p-14 flex flex-col items-center gap-6">
+            <h2 class="font-display text-2xl md:text-4xl text-softSilk tracking-widest glow-text">
+                La recompensa está aquí.
+            </h2>
+
+            <div class="spotify-embed-wrap w-full">
+                <div class="relative">
+                    <iframe
+                        id="spotify-iframe"
+                        class="spotify-embed"
+                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                        loading="lazy"
+                        src=""
+                        title="Spotify playlist"
+                    ></iframe>
+
+                    <div id="embed-gate" class="embed-gate">
+                        <div>
+                            <img id="playlist-cover" class="playlist-cover mx-auto mb-5" src="Playlist.png" alt="Portada de la playlist" loading="lazy">
+                            <p class="font-display text-lg md:text-xl text-softSilk tracking-wider">
+                                Toca la playlist para revelar el secreto.
+                            </p>
+                            <p id="embed-status" class="mt-2 text-xs uppercase tracking-[0.3em] text-stellarLavender opacity-80">
+                                (un toque basta)
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 flex justify-center">
+                    <a id="spotify-link" href="#" target="_blank" class="btn-elegant font-display text-base md:text-lg px-10 py-4 rounded-full text-white tracking-widest uppercase flex items-center gap-3">
+                        <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.503 17.31c-.22.36-.683.475-1.043.255-2.883-1.76-6.51-2.16-10.785-1.183-.412.094-.823-.16-.917-.572-.094-.413.16-.823.573-.917 4.673-1.07 8.68-.614 11.916 1.36.36.22.475.683.256 1.042zm1.47-3.253c-.277.45-.863.593-1.312.316-3.297-2.028-8.324-2.616-12.222-1.433-.507.154-1.04-.136-1.194-.643-.153-.507.137-1.04.644-1.194 4.455-1.353 10-0.697 13.805 1.645.45.277.593.863.316 1.312zm.126-3.39c-3.953-2.348-10.475-2.565-14.267-1.413-.606.184-1.252-.164-1.436-.77-.184-.606.164-1.252.77-1.436 4.354-1.322 11.554-1.066 16.096 1.63.547.324.727 1.03.403 1.577-.324.547-1.03.727-1.577.403z"/></svg>
+                        Abrir en Spotify
+                    </a>
+                </div>
+            </div>
+
+            <div class="revealed-text-box glass-panel p-8 text-center flex flex-wrap justify-center items-center w-full max-w-[640px]">
+                <p id="final-message-display" class="text-3xl md:text-6xl font-display leading-tight text-softSilk">
+                    <!-- Final message appears here -->
+                </p>
+            </div>
+
+        </div>
+    </section>
+
+    <script>
+        const PLAYLIST_URL = "https://open.spotify.com/playlist/1eov5LAJZqlKBM6m1iknul?si=e8461516ae5c4f0d&pt=7beeaf0825f247aa080c9f6c0831417c";
+
+        document.getElementById('spotify-link').href = PLAYLIST_URL;
+
+        const MESSAGE_CLUES = [
+            "Eres", "mi", "universo", "entero,", "la", "luz", "que", "guía."
+        ];
+
+        const FINAL_MESSAGE_WORDS = ["¿Puedo", "ser", "tu", "novio?"];
+        
+        let foundStars = 0;
+        const totalStars = MESSAGE_CLUES.length;
+        let foundIndices = new Set();
+
+        // Background Star Field
+        const canvas = document.getElementById('star-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        class Particle {
+            constructor() {
+                this.reset();
+            }
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2;
+                this.speed = Math.random() * 0.5;
+                this.alpha = Math.random();
+            }
+            update() {
+                this.y -= this.speed;
+                if (this.y < 0) this.reset();
+            }
+            draw() {
+                ctx.fillStyle = `rgba(208, 187, 234, ${this.alpha})`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function initParticles() {
+            particles = [];
+            for (let i = 0; i < 150; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+        initParticles();
+        animate();
+
+        // Phase Transitions
+        function transitionToPhase(phaseNumber) {
+            document.querySelectorAll('.phase').forEach(p => p.classList.remove('active'));
+            if (phaseNumber === 1) document.getElementById('phase-intro').classList.add('active');
+            if (phaseNumber === 2) {
+                document.getElementById('phase-constellation').classList.add('active');
+                initConstellation();
+            }
+            if (phaseNumber === 3) {
+                document.getElementById('phase-final').classList.add('active');
+                initFinalPhase();
+            }
+        }
+
+        // Final Phase (Playlist-centered reveal)
+        let finalRevealStarted = false;
+        let finalRevealIndex = 0;
+
+        function initFinalPhase() {
+            finalRevealStarted = false;
+            finalRevealIndex = 0;
+
+            const iframe = document.getElementById('spotify-iframe');
+            const gate = document.getElementById('embed-gate');
+            const display = document.getElementById('final-message-display');
+            const status = document.getElementById('embed-status');
+
+            // Build embed URL from the playlist link to avoid mismatched IDs / params.
+            const embedUrl = buildSpotifyEmbedUrl(PLAYLIST_URL);
+            iframe.src = embedUrl;
+            display.innerHTML = '';
+            gate.classList.remove('hidden');
+            status.innerText = '(un toque basta)';
+
+            // If the embed doesn't load, provide a clearer hint.
+            let loaded = false;
+            iframe.onload = () => { loaded = true; };
+            setTimeout(() => {
+                if (!loaded) {
+                    status.innerText = 'Si no carga, usa “Abrir en Spotify”.';
+                }
+            }, 3500);
+
+            const start = () => startFinalReveal(gate);
+            gate.onclick = start;
+            gate.ontouchstart = start;
+        }
+
+        function buildSpotifyEmbedUrl(spotifyPlaylistUrl) {
+            try {
+                const url = new URL(spotifyPlaylistUrl);
+                const parts = url.pathname.split('/').filter(Boolean);
+                const playlistIndex = parts.indexOf('playlist');
+                const playlistId = playlistIndex >= 0 ? parts[playlistIndex + 1] : null;
+
+                if (!playlistId) {
+                    return 'https://open.spotify.com/embed/playlist/1eov5LAJZqlKBM6m1iknul?utm_source=generator&theme=0';
+                }
+
+                return `https://open.spotify.com/embed/playlist/${playlistId}?utm_source=generator&theme=0`;
+            } catch {
+                return 'https://open.spotify.com/embed/playlist/1eov5LAJZqlKBM6m1iknul?utm_source=generator&theme=0';
+            }
+        }
+
+        function startFinalReveal(gateElement) {
+            if (finalRevealStarted) return;
+            finalRevealStarted = true;
+            gateElement.classList.add('hidden');
+
+            const display = document.getElementById('final-message-display');
+
+            const tick = () => {
+                if (finalRevealIndex >= FINAL_MESSAGE_WORDS.length) return;
+
+                const span = document.createElement('span');
+                span.className = 'word-span';
+                span.innerText = FINAL_MESSAGE_WORDS[finalRevealIndex];
+                display.appendChild(span);
+                setTimeout(() => span.classList.add('visible'), 50);
+
+                finalRevealIndex++;
+
+                if (finalRevealIndex < FINAL_MESSAGE_WORDS.length) {
+                    setTimeout(tick, 700);
+                }
+            };
+
+            setTimeout(tick, 250);
+        }
+
+        // Constellation Interaction
+        function initConstellation() {
+            const container = document.getElementById('stars-container');
+            container.innerHTML = '';
+
+            foundStars = 0;
+            foundIndices = new Set();
+            document.getElementById('message-display').innerHTML = '';
+            updateProgress();
+            
+            // Randomly position stars but keep them centered and above the bottom UI
+            MESSAGE_CLUES.forEach((clue, index) => {
+                const star = document.createElement('div');
+                star.className = 'interactive-star animate-star-twinkle';
+                
+                // Keep a centered constellation area and avoid the message box zone.
+                // (y max ~52% keeps stars away from the bottom panel on most screens)
+                const x = 25 + Math.random() * 50;
+                const y = 10 + Math.random() * 42;
+                
+                star.style.left = `${x}%`;
+                star.style.top = `${y}%`;
+                star.style.animationDelay = `${Math.random() * 3}s`;
+                
+                star.onclick = () => revealClue(index, star);
+                container.appendChild(star);
+            });
+        }
+
+        function revealClue(index, element) {
+            if (element.classList.contains('found')) return;
+            
+            element.classList.add('found');
+            foundStars++;
+            foundIndices.add(index);
+            
+            // Audio Feedback (Optional/Subtle)
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(440 + (index * 110), audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 1);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 1);
+
+            // Update Text (temporary order as collected)
+            const display = document.getElementById('message-display');
+            const span = document.createElement('span');
+            span.className = 'word-span';
+            span.innerText = MESSAGE_CLUES[index];
+            display.appendChild(span);
+            setTimeout(() => span.classList.add('visible'), 50);
+
+            // Update Progress
+            updateProgress();
+
+            if (foundStars === totalStars) {
+                // Once all stars are found, re-order the text to the intended message.
+                setTimeout(() => {
+                    renderOrderedConstellationMessage();
+                }, 500);
+
+                setTimeout(() => {
+                    transitionToPhase(3);
+                }, 2600);
+            }
+        }
+
+        function renderOrderedConstellationMessage() {
+            const display = document.getElementById('message-display');
+            display.innerHTML = '';
+
+            MESSAGE_CLUES.forEach((word, i) => {
+                if (!foundIndices.has(i)) return;
+                const span = document.createElement('span');
+                span.className = 'word-span';
+                span.innerText = word;
+                display.appendChild(span);
+                setTimeout(() => span.classList.add('visible'), 50 + (i * 80));
+            });
+        }
+
+        function updateProgress() {
+            const bar = document.getElementById('progress-bar');
+            const text = document.getElementById('progress-text');
+            const percentage = (foundStars / totalStars) * 100;
+            bar.style.width = `${percentage}%`;
+            text.innerText = `${foundStars} / ${totalStars} estrellas encontradas`;
+        }
+    </script>
+</body>
+</html>
