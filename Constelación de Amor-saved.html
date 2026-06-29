@@ -63,13 +63,31 @@
             align-items: center;
             opacity: 0;
             pointer-events: none;
-            transition: opacity 1.5s ease-in-out, transform 1.5s ease-in-out;
+            filter: blur(16px);
+            transform: scale(0.985);
+            transition: opacity 1.1s ease-in-out, transform 1.1s ease-in-out, filter 1.1s ease-in-out;
             z-index: 10;
         }
 
         .phase.active {
             opacity: 1;
             pointer-events: auto;
+            filter: blur(0);
+            transform: scale(1);
+        }
+
+        .phase.entering {
+            opacity: 1;
+            pointer-events: auto;
+            filter: blur(0);
+            transform: scale(1);
+        }
+
+        .phase.exiting {
+            opacity: 0;
+            pointer-events: none;
+            filter: blur(18px);
+            transform: scale(1.015);
         }
 
         #star-canvas {
@@ -219,6 +237,51 @@
             border-radius: 1rem;
             border: 1px solid rgba(208, 187, 234, 0.25);
         }
+
+        .memory-panel {
+            width: 90vw;
+            max-width: 680px;
+        }
+
+        .memory-image {
+            width: 100%;
+            aspect-ratio: 4 / 5;
+            object-fit: cover;
+            border-radius: 1.5rem;
+            border: 1px solid rgba(208, 187, 234, 0.25);
+            box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+        }
+
+        .memory-image-clickable {
+            cursor: pointer;
+            transition: transform 0.35s ease, box-shadow 0.35s ease;
+        }
+
+        .memory-image-clickable:hover {
+            transform: scale(1.01);
+            box-shadow: 0 24px 50px rgba(0, 0, 0, 0.45);
+        }
+
+        .memory-date {
+            letter-spacing: 0.35em;
+        }
+
+        .final-message-shell {
+            width: 100%;
+            max-width: 640px;
+            opacity: 0;
+            transform: translateY(12px) scale(0.98);
+            filter: blur(16px);
+            pointer-events: none;
+            transition: opacity 0.9s ease, transform 0.9s ease, filter 0.9s ease;
+        }
+
+        .final-message-shell.visible {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            filter: blur(0);
+            pointer-events: auto;
+        }
     </style>
 </head>
 <body class="font-body">
@@ -231,7 +294,7 @@
             Hay secretos guardados<br>en el firmamento.
         </h1>
         <button onclick="transitionToPhase(2)" class="btn-elegant font-display text-lg px-12 py-4 rounded-full text-white tracking-widest uppercase">
-            Descubrir Mensaje
+            Descubrir el mensaje
         </button>
     </section>
 
@@ -259,11 +322,45 @@
         </div>
     </section>
 
-    <!-- PHASE 3: PLAYLIST REWARD + REVEAL -->
+    <!-- FASE 3: RECUERDO DE LA LUNA -->
+    <section id="phase-moon" class="phase px-6 text-center">
+        <div class="glass-panel p-8 md:p-14 flex flex-col items-center gap-6">
+            <h2 class="font-display text-2xl md:text-4xl text-softSilk tracking-widest glow-text">
+                Hay un recuerdo que el cielo no quiso olvidar.
+            </h2>
+
+            <div class="memory-panel glass-panel p-4 md:p-6">
+                <img
+                    id="moon-image"
+                    src="12Nov2025.jpg"
+                    alt="La luna capturada el 12 de noviembre de 2025, rodeada por estrellas"
+                    class="memory-image memory-image-clickable"
+                    loading="lazy"
+                    onclick="openMoonReveal()"
+                >
+                <div class="mt-5 text-center px-2 md:px-4">
+                    <p class="font-display text-xs md:text-sm text-stellarLavender uppercase memory-date opacity-80">
+                        12 de noviembre de 2025
+                    </p>
+                    <p class="mt-3 font-display text-lg md:text-2xl text-softSilk leading-snug">
+                        La luna brillaba como si supiera tu nombre.
+                    </p>
+                    <p class="mt-3 text-sm md:text-base text-softSilk/80 leading-relaxed">
+                        Esa noche quedó escrita entre estrellas, y desde entonces el cielo guarda el secreto con nosotros.
+                    </p>
+                    <p class="mt-4 text-xs uppercase tracking-[0.28em] text-stellarLavender opacity-80">
+                        Toca la luna para descubrir la respuesta
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FASE 4: RECOMPENSA DE LA LISTA Y REVELACIÓN -->
     <section id="phase-final" class="phase px-6 text-center">
         <div class="glass-panel p-8 md:p-14 flex flex-col items-center gap-6">
             <h2 class="font-display text-2xl md:text-4xl text-softSilk tracking-widest glow-text">
-                La recompensa está aquí.
+                La recompensa sigue aquí, esperándote.
             </h2>
 
             <div class="spotify-embed-wrap w-full">
@@ -274,14 +371,14 @@
                         allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                         loading="lazy"
                         src=""
-                        title="Spotify playlist"
+                        title="Lista de Spotify"
                     ></iframe>
 
                     <div id="embed-gate" class="embed-gate">
                         <div>
                             <img id="playlist-cover" class="playlist-cover mx-auto mb-5" src="Playlist.png" alt="Portada de la playlist" loading="lazy">
                             <p class="font-display text-lg md:text-xl text-softSilk tracking-wider">
-                                Toca la playlist para revelar el secreto.
+                                Toca la lista para descubrir la pista.
                             </p>
                             <p id="embed-status" class="mt-2 text-xs uppercase tracking-[0.3em] text-stellarLavender opacity-80">
                                 (un toque basta)
@@ -298,7 +395,7 @@
                 </div>
             </div>
 
-            <div class="revealed-text-box glass-panel p-8 text-center flex flex-wrap justify-center items-center w-full max-w-[640px]">
+            <div id="final-message-shell" class="final-message-shell revealed-text-box glass-panel p-8 text-center flex flex-wrap justify-center items-center w-full max-w-[640px]">
                 <p id="final-message-display" class="text-3xl md:text-6xl font-display leading-tight text-softSilk">
                     <!-- Final message appears here -->
                 </p>
@@ -316,11 +413,12 @@
             "Eres", "mi", "universo", "entero,", "la", "luz", "que", "guía."
         ];
 
-        const FINAL_MESSAGE_WORDS = ["¿Puedo", "ser", "tu", "novio?"];
+        const FINAL_MESSAGE_WORDS = ["La", "respuesta", "vive", "entre", "la", "luna", "y", "nuestras", "canciones."];
         
         let foundStars = 0;
         const totalStars = MESSAGE_CLUES.length;
         let foundIndices = new Set();
+        let finalMessageShouldReveal = false;
 
         // Background Star Field
         const canvas = document.getElementById('star-canvas');
@@ -378,19 +476,38 @@
 
         // Phase Transitions
         function transitionToPhase(phaseNumber) {
-            document.querySelectorAll('.phase').forEach(p => p.classList.remove('active'));
-            if (phaseNumber === 1) document.getElementById('phase-intro').classList.add('active');
-            if (phaseNumber === 2) {
-                document.getElementById('phase-constellation').classList.add('active');
-                initConstellation();
+            const currentPhase = document.querySelector('.phase.active');
+            const nextPhase = document.getElementById(
+                phaseNumber === 1 ? 'phase-intro' :
+                phaseNumber === 2 ? 'phase-constellation' :
+                phaseNumber === 3 ? 'phase-moon' :
+                'phase-final'
+            );
+
+            if (!nextPhase || currentPhase === nextPhase) return;
+
+            if (currentPhase) {
+                currentPhase.classList.add('exiting');
+                currentPhase.classList.remove('entering');
             }
-            if (phaseNumber === 3) {
-                document.getElementById('phase-final').classList.add('active');
-                initFinalPhase();
-            }
+
+            nextPhase.classList.add('active', 'entering');
+
+            window.setTimeout(() => {
+                document.querySelectorAll('.phase').forEach(p => p.classList.remove('active', 'entering', 'exiting'));
+                nextPhase.classList.add('active');
+
+                if (phaseNumber === 2) {
+                    initConstellation();
+                }
+
+                if (phaseNumber === 4) {
+                    initFinalPhase();
+                }
+            }, 1100);
         }
 
-        // Final Phase (Playlist-centered reveal)
+        // Fase final: la revelación gira en torno a la lista
         let finalRevealStarted = false;
         let finalRevealIndex = 0;
 
@@ -400,6 +517,7 @@
 
             const iframe = document.getElementById('spotify-iframe');
             const gate = document.getElementById('embed-gate');
+            const finalShell = document.getElementById('final-message-shell');
             const display = document.getElementById('final-message-display');
             const status = document.getElementById('embed-status');
 
@@ -409,6 +527,7 @@
             display.innerHTML = '';
             gate.classList.remove('hidden');
             status.innerText = '(un toque basta)';
+            finalShell.classList.remove('visible');
 
             // If the embed doesn't load, provide a clearer hint.
             let loaded = false;
@@ -419,9 +538,21 @@
                 }
             }, 3500);
 
-            const start = () => startFinalReveal(gate);
-            gate.onclick = start;
-            gate.ontouchstart = start;
+            const startSpotifyReveal = () => gate.classList.add('hidden');
+            gate.onclick = startSpotifyReveal;
+            gate.ontouchstart = startSpotifyReveal;
+
+            if (finalMessageShouldReveal) {
+                window.setTimeout(() => {
+                    finalShell.classList.add('visible');
+                    startFinalReveal();
+                }, 250);
+            }
+        }
+
+        function openMoonReveal() {
+            finalMessageShouldReveal = true;
+            transitionToPhase(4);
         }
 
         function buildSpotifyEmbedUrl(spotifyPlaylistUrl) {
@@ -441,10 +572,9 @@
             }
         }
 
-        function startFinalReveal(gateElement) {
+        function startFinalReveal() {
             if (finalRevealStarted) return;
             finalRevealStarted = true;
-            gateElement.classList.add('hidden');
 
             const display = document.getElementById('final-message-display');
 
