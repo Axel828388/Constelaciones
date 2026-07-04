@@ -116,7 +116,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            transition: all 0.5s ease;
+            transition: opacity 0.7s ease, transform 0.7s ease, filter 0.7s ease;
         }
 
         .interactive-star::after {
@@ -135,9 +135,38 @@
             transform: scale(1.5);
         }
 
+        .interactive-star.found {
+            animation: star-vanish 0.95s ease forwards;
+            pointer-events: none;
+        }
+
+        @keyframes star-vanish {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+                filter: blur(0);
+            }
+            55% {
+                opacity: 0.95;
+                transform: translateY(-12px) scale(1.35);
+                filter: blur(0);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-24px) scale(0.12);
+                filter: blur(2px);
+            }
+        }
+
         .interactive-star:hover::after {
             transform: scale(1.8);
             box-shadow: 0 0 30px 8px #B19CD9;
+        }
+
+        .interactive-star.missed::after {
+            background: #7f6a9e;
+            box-shadow: 0 0 18px 4px rgba(177, 156, 217, 0.35);
+            transform: scale(1.25);
         }
 
         .star-particle {
@@ -166,6 +195,31 @@
             min-height: 120px;
             width: 90%;
             max-width: 600px;
+        }
+
+        .clue-hint {
+            min-height: 1.5rem;
+            max-width: 40rem;
+            margin-inline: auto;
+            padding: 0.9rem 1.1rem;
+            border-radius: 1rem;
+            border: 1px solid rgba(208, 187, 234, 0.16);
+            background: rgba(15, 15, 26, 0.28);
+            backdrop-filter: blur(10px);
+            transition: background 0.35s ease, border-color 0.35s ease, transform 0.35s ease, color 0.35s ease;
+        }
+
+        .clue-hint.warning {
+            background: rgba(208, 187, 234, 0.16);
+            border-color: rgba(255, 255, 255, 0.35);
+            color: #ffffff;
+            transform: scale(1.02);
+            animation: clue-pulse 0.9s ease-in-out 1;
+        }
+
+        @keyframes clue-pulse {
+            0%, 100% { box-shadow: 0 0 0 rgba(177, 156, 217, 0); }
+            50% { box-shadow: 0 0 28px rgba(177, 156, 217, 0.35); }
         }
 
         .word-span {
@@ -287,6 +341,7 @@
 <body class="font-body">
 
     <canvas id="star-canvas"></canvas>
+    <audio id="background-audio" src="videoplayback.m4a" preload="auto" loop playsinline></audio>
 
     <!-- PHASE 1: INTRODUCTION -->
     <section id="phase-intro" class="phase active px-6 text-center">
@@ -310,6 +365,10 @@
                     <!-- Clues appear here -->
                 </p>
             </div>
+
+            <p id="clue-hint" class="clue-hint mt-4 text-sm md:text-base uppercase tracking-[0.22em] text-stellarLavender opacity-90 text-center pointer-events-auto" role="status" aria-live="assertive" aria-atomic="true">
+                Encuentra las estrellas en orden para revelar la frase.
+            </p>
             
             <div class="mt-8 pointer-events-auto">
                 <div class="flex flex-col items-center gap-2">
@@ -380,9 +439,6 @@
                             <p class="font-display text-lg md:text-xl text-softSilk tracking-wider">
                                 Toca la lista para descubrir la pista.
                             </p>
-                            <p id="embed-status" class="mt-2 text-xs uppercase tracking-[0.3em] text-stellarLavender opacity-80">
-                                (un toque basta)
-                            </p>
                         </div>
                     </div>
                 </div>
@@ -419,11 +475,28 @@
         const totalStars = MESSAGE_CLUES.length;
         let foundIndices = new Set();
         let finalMessageShouldReveal = false;
+        let backgroundAudioStarted = false;
+        let nextClueIndex = 0;
 
         // Background Star Field
         const canvas = document.getElementById('star-canvas');
         const ctx = canvas.getContext('2d');
         let particles = [];
+
+        const backgroundAudio = document.getElementById('background-audio');
+        backgroundAudio.volume = 0.28;
+
+        function startBackgroundAudio() {
+            if (backgroundAudioStarted) return;
+            backgroundAudioStarted = true;
+
+            const playback = backgroundAudio.play();
+            if (playback && typeof playback.catch === 'function') {
+                playback.catch(() => {
+                    backgroundAudioStarted = false;
+                });
+            }
+        }
 
         function resize() {
             canvas.width = window.innerWidth;
@@ -473,6 +546,10 @@
         resize();
         initParticles();
         animate();
+
+        document.addEventListener('pointerdown', startBackgroundAudio, { once: true, capture: true });
+        document.addEventListener('touchstart', startBackgroundAudio, { once: true, capture: true, passive: true });
+        document.addEventListener('click', startBackgroundAudio, { once: true, capture: true });
 
         // Phase Transitions
         function transitionToPhase(phaseNumber) {
@@ -604,10 +681,13 @@
 
             foundStars = 0;
             foundIndices = new Set();
+            nextClueIndex = 0;
             document.getElementById('message-display').innerHTML = '';
+            document.getElementById('clue-hint').innerText = 'Encuentra las estrellas en orden para revelar la frase.';
             updateProgress();
             
-            // Randomly position stars but keep them centered and above the bottom UI
+            // Randomly position stars but keep them centered and above the bottom UI.
+            // Add a few false stars so the user has to explorar más antes de completar la constelación.
             MESSAGE_CLUES.forEach((clue, index) => {
                 const star = document.createElement('div');
                 star.className = 'interactive-star animate-star-twinkle';
@@ -624,14 +704,34 @@
                 star.onclick = () => revealClue(index, star);
                 container.appendChild(star);
             });
+
+            for (let i = 0; i < 8; i++) {
+                const decoy = document.createElement('div');
+                decoy.className = 'interactive-star animate-star-twinkle';
+
+                const x = 8 + Math.random() * 84;
+                const y = 8 + Math.random() * 50;
+
+                decoy.style.left = `${x}%`;
+                decoy.style.top = `${y}%`;
+                decoy.style.animationDelay = `${Math.random() * 4}s`;
+                decoy.onclick = () => revealDecoyStar(decoy);
+                container.appendChild(decoy);
+            }
         }
 
         function revealClue(index, element) {
             if (element.classList.contains('found')) return;
+
+            if (index !== nextClueIndex) {
+                revealDecoyStar(element);
+                return;
+            }
             
             element.classList.add('found');
             foundStars++;
             foundIndices.add(index);
+            nextClueIndex++;
             
             // Audio Feedback (Optional/Subtle)
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -654,6 +754,19 @@
             display.appendChild(span);
             setTimeout(() => span.classList.add('visible'), 50);
 
+            window.setTimeout(() => {
+                element.classList.add('found');
+            }, 80);
+
+            const hint = document.getElementById('clue-hint');
+            if (nextClueIndex < MESSAGE_CLUES.length) {
+                hint.classList.remove('warning');
+                hint.innerText = `Siguiente palabra: ${MESSAGE_CLUES[nextClueIndex]}`;
+            } else {
+                hint.classList.remove('warning');
+                hint.innerText = 'La constelación ya casi revela su secreto.';
+            }
+
             // Update Progress
             updateProgress();
 
@@ -667,6 +780,25 @@
                     transitionToPhase(3);
                 }, 2600);
             }
+        }
+
+        function revealDecoyStar(element) {
+            if (element.classList.contains('found') || element.classList.contains('missed')) return;
+
+            element.classList.add('missed');
+            const hint = document.getElementById('clue-hint');
+            hint.classList.add('warning');
+            hint.innerText = 'Esa estrella no guarda la palabra. Busca otra estrella.';
+
+            setTimeout(() => {
+                element.classList.remove('missed');
+            }, 900);
+
+            setTimeout(() => {
+                if (!hint.innerText.startsWith('Siguiente palabra:') && hint.innerText !== 'La constelación ya casi revela su secreto.') {
+                    hint.classList.remove('warning');
+                }
+            }, 1600);
         }
 
         function renderOrderedConstellationMessage() {
